@@ -258,8 +258,8 @@ CERINȚE TEHNICE FINALE:
             },
             {"role": "user", "content": prompt},
         ],
-        max_tokens=4500,
-        temperature=0.9,
+        max_completion_tokens=3500,
+    temperature=0.9,
     )
 
     # în noul SDK, conținutul este în .message.content
