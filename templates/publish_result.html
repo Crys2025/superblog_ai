@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="publish-result">
+    {% if success %}
+        <h2>Articol trimis către WordPress</h2>
+        <p>{{ message }}</p>
+        {% if post_url %}
+            <p><a href="{{ post_url }}" target="_blank" class="btn-primary">Vezi articolul pe site</a></p>
+        {% endif %}
+    {% else %}
+        <h2>Eroare la publicare</h2>
+        <p>{{ message }}</p>
+        <p><a href="{{ url_for('index') }}" class="btn-secondary">Înapoi la generator</a></p>
+    {% endif %}
+</section>
+
+{% endblock %}

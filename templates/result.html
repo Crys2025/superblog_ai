@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="result-top">
+    <div class="result-badge">Articol generat cu AI pentru SuperBlog</div>
+    <h2 class="result-title">{{ title }}</h2>
+    <p class="result-source">
+        <span>Probă preluată din:</span>
+        <a href="{{ probe_url }}" target="_blank">{{ probe_url }}</a>
+    </p>
+</section>
+
+<section class="article-layout">
+
+    <article class="article-main">
+        <header class="article-header">
+            <p class="article-label">Previzualizare articol</p>
+        </header>
+
+        <div class="article-body">
+            {{ article | safe }}
+        </div>
+    </article>
+
+    {% if images and images|length > 0 %}
+    <aside class="article-sidebar">
+        <h3>Imagini din probă / sponsori</h3>
+        <p class="sidebar-hint">
+            Aceste imagini sunt preluate automat. Poți folosi linkurile lor în articolul final din WordPress.
+        </p>
+        <div class="image-grid">
+            {% for img in images %}
+            <figure class="image-card">
+                <img src="{{ img }}" alt="Imagine asociată probei">
+            </figure>
+            {% endfor %}
+        </div>
+    </aside>
+    {% endif %}
+
+</section>
+
+<section class="editor-section">
+    <h2>Editează înainte de publicare</h2>
+    <p class="editor-intro">
+        Verifică structura, adaugă intro personal, link de afiliere, menționează experiențe proprii
+        și ajustează tonul exact pe stilul tău de SuperBlogger.
+    </p>
+
+    <form method="post" action="{{ url_for('publish') }}" class="editor-form">
+        <div class="form-row">
+            <label for="title">Titlu articol (WordPress)</label>
+            <input type="text" id="title" name="title" value="{{ title }}" required>
+        </div>
+
+        <div class="form-row">
+            <label for="content">Conținut articol (HTML)</label>
+            <textarea id="content" name="content" rows="22" required>{{ article }}</textarea>
+            <p class="hint">
+                Poți insera imagini folosind taguri HTML, de exemplu:<br>
+                <code>&lt;figure&gt;&lt;img src="LINK_IMAGINE" alt="descriere"&gt;&lt;figcaption&gt;Legenda imaginii&lt;/figcaption&gt;&lt;/figure&gt;</code>
+            </p>
+        </div>
+
+        <div class="editor-actions">
+            <button type="submit" class="btn-primary">Publică în WordPress</button>
+            <a href="{{ url_for('index') }}" class="btn-secondary">Generează alt articol</a>
+        </div>
+    </form>
+</section>
+
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<section class="generator-form">
+    <h2>Generează un articol SuperBlog</h2>
+    <p class="editor-intro">
+        Introdu linkul unei probe SuperBlog, alege stilul dorit și lasă AI-ul să construiască un articol
+        complet, structură premium, gata de publicare în WordPress.
+    </p>
+
+    <form method="post">
+        <div class="form-row">
+            <label for="probe_url">Link probă SuperBlog</label>
+            <input type="url" id="probe_url" name="probe_url" placeholder="https://blog.super-blog.eu/..." required>
+        </div>
+
+        <div class="form-row">
+            <label for="style">Stil de scriere</label>
+            <select id="style" name="style">
+                <option value="balanced" selected>Echilibrat (recomandat)</option>
+                <option value="story">Povestit, emoțional</option>
+                <option value="marketing">Orientat pe beneficii (soft marketing)</option>
+                <option value="journalistic">Jurnalistic / informativ</option>
+                <option value="playful">Jucăuș, cu umor fin</option>
+                <option value="formal">Mai formal, structurat</option>
+            </select>
+        </div>
+
+        <div class="editor-actions">
+            <button type="submit" class="btn-primary">Generează articolul</button>
+        </div>
+    </form>
+</section>
+
+<section class="tips">
+    <h2>Tips pentru un articol de nivel premiu</h2>
+    <ol>
+        <li>Adaugă 2-3 propoziții din experiența ta personală.</li>
+        <li>Verifică să fie integrate corect cerințele tehnice ale probei (cuvinte-cheie, linkuri, număr de cuvinte).</li>
+        <li>Adaugă propriile imagini sau adaptează textul la stilul blogului tău.</li>
+    </ol>
+</section>
+
+{% endblock %}

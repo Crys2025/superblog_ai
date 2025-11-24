@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="task-status">
+    {% if status == "pending" %}
+        <h2>Se generează articolul...</h2>
+        <p>{{ message }}</p>
+        <p class="hint">
+            Pagina se poate reîncărca manual sau poți da refresh după câteva secunde.
+        </p>
+        <p>
+            <a href="{{ url_for('task_status', task_id=task_id) }}" class="btn-primary">Reîncarcă acum</a>
+        </p>
+        <meta http-equiv="refresh" content="6">
+    {% elif status == "error" %}
+        <h2>Eroare la generare</h2>
+        <p>{{ message }}</p>
+        <p>
+            <a href="{{ url_for('index') }}" class="btn-secondary">Înapoi la formular</a>
+        </p>
+    {% elif status == "missing" %}
+        <h2>Task inexistent sau expirat</h2>
+        <p>{{ message }}</p>
+        <p>
+            <a href="{{ url_for('index') }}" class="btn-secondary">Înapoi la început</a>
+        </p>
+    {% endif %}
+</section>
+
+{% endblock %}

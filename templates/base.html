@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ro">
+<head>
+    <meta charset="utf-8">
+    <title>SuperBlog AI Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="site-header">
+    <h1>SuperBlog AI Generator</h1>
+    <p>Din brief la articol complet, în stil de super-blogger.</p>
+</header>
+<main class="content">
+    {% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+    &copy; 2025 SuperBlog AI Helper
+</footer>
+</body>
+</html>
