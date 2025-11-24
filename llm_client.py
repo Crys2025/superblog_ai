@@ -245,7 +245,7 @@ CERINȚE TEHNICE FINALE:
 
     # ------------------ APEL LA MODEL ------------------
     response = client.chat.completions.create(
-        model="gpt-5.1",  # model mai puternic (ChatGPT 5.1)
+        model="gpt-4o",  
         messages=[
             {
                 "role": "system",
