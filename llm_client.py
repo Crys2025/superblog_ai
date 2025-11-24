@@ -1,200 +1,233 @@
 from openai import OpenAI
 import os
 
+# Creează clientul OpenAI folosind cheia din variabila de mediu
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def generate_article(extracted, style: str = "balanced"):
     """
-    Generator de articole SuperBlog, stil scriitor celebru + SEO,
-    cu structură HTML completă, linkuri și imagini integrate.
+    Generează un articol SuperBlog sub formă de POVESTE cinematică,
+    integrând natural:
+      - cerințele din enunțul probei (text, ton)
+      - sponsorii și linkurile lor
+      - imaginile disponibile
+      - cuvintele-cheie obligatorii:
+          * asistent virtual
+          * translator vocal
+          * traducere instantanee
 
-    Folosește:
-    - textul probei (full_text, intro)
-    - sponsorii extrași (nume + link)
-    - imaginile extrase (lista images)
+    `extracted` este dict-ul de la scraper.py și conține:
+      - probe_title
+      - intro
+      - full_text
+      - sponsors: list[{"name", "url"}]
+      - images: list[str]
     """
 
+    # ------------------ DATE PROBĂ ------------------
     probe_title = extracted.get("probe_title", "Articol SuperBlog")
     probe_intro = extracted.get("intro", "")
     full_text = extracted.get("full_text", "")
     sponsors = extracted.get("sponsors", [])
     images = extracted.get("images", [])
 
-    # ---------------------------------------------------------
-    # Construim blocul textual cu sponsorii (pentru prompt)
-    # ---------------------------------------------------------
+    # ------------------ SPONSORI ------------------
     sponsor_links_text = ""
+    robochat_url = None
+    mobility_url = None
+
     if sponsors:
         for s in sponsors:
-            name = s.get("name", "").strip()
-            url = s.get("url", "").strip()
-            if name and url:
-                sponsor_links_text += f"- {name}: {url}\n"
-    else:
-        sponsor_links_text = "- (Niciun sponsor clar detectat în probă)"
+            name = (s.get("name") or "").strip()
+            url = (s.get("url") or "").strip()
+            if not url:
+                continue
 
-    # ---------------------------------------------------------
-    # Imagini – folosim până la 3 pentru articol
-    # ---------------------------------------------------------
+            # păstrăm listă textuală pentru prompt
+            sponsor_links_text += f"- {name or url}: {url}\n"
+
+            low_url = url.lower()
+            if "robochat.ro" in low_url and robochat_url is None:
+                robochat_url = url
+            if "mobility.robochat.pro" in low_url and mobility_url is None:
+                mobility_url = url
+    else:
+        sponsor_links_text = "- (Nu s-au detectat sponsori din probă – se vor folosi linkurile implicite.)"
+
+    # fallback-uri dacă nu s-au detectat din probă
+    if robochat_url is None:
+        robochat_url = "https://robochat.ro"
+    if mobility_url is None:
+        mobility_url = "https://mobility.robochat.pro"
+
+    # ------------------ IMAGINI ------------------
     main_image = images[0] if len(images) > 0 else ""
     second_image = images[1] if len(images) > 1 else ""
     third_image = images[2] if len(images) > 2 else ""
 
-    # ---------------------------------------------------------
-    # Stiluri posibile
-    # ---------------------------------------------------------
+    # ------------------ STILURI ------------------
     style_map = {
-        "balanced": "Ton echilibrat, cald, narativ + explicativ, ideal pentru SuperBlog.",
-        "story": "Ton puternic narativ, emoțional, cu detalii și atmosferă.",
-        "marketing": "Ton persuasiv, orientat pe beneficii, dar prietenos și etic.",
-        "journalistic": "Ton jurnalistic, bine structurat, cu logică și explicații clare.",
-        "playful": "Ton jucăuș, cu umor fin, metafore și energie pozitivă.",
-        "formal": "Ton mai serios, elevat, bine structurat, cu fraze curate.",
+        "balanced": "Ton narativ + explicativ, echilibrat, potrivit pentru un articol de blog literar, dar clar.",
+        "story": "Ton puternic narativ, cinematic, emoțional, cu dialoguri și scene vizuale.",
+        "marketing": "Ton narativ cu accent pe beneficii și transformare, dar nu agresiv, ci cald.",
+        "journalistic": "Ton narativ-jurnalistic, ca un reportaj cu personaje și trăiri.",
+        "playful": "Ton narativ jucăuș, cu umor fin și imagini vii.",
+        "formal": "Ton narativ mai sobru, elegant, cu fraze lungi și bine așezate.",
     }
-    style_instruction = style_map.get(style, style_map["balanced"])
+    style_instruction = style_map.get(style, style_map["story"])
 
-    # ---------------------------------------------------------
-    # Exemplu de structură (few-shot foarte scurt, DOAR ca stil)
-    # ---------------------------------------------------------
+    # ------------------ EXEMPLU DE STIL (few-shot scurt) ------------------
     example_article = """
 <exemplu_superblog>
-<h1>Exemplu – Când tehnologia repară o conversație</h1>
-<p>Uneori, cea mai dificilă parte a unei discuții nu este ceea ce spui, ci ceea ce celălalt înțelege. O propoziție mică poate aprinde o furtună de interpretări, iar totul pornește de la o nuanță de ton sau un cuvânt ales neinspirat.</p>
-<h2>Când cuvintele nu ajung unde trebuie</h2>
-<p>Mi s-a întâmplat să vorbesc cu un coleg din altă țară și să simt că, deși folosim aceeași limbă, trăim în conversații paralele. Eu explicam, el înțelegea altceva. Nu din răutate, ci din lipsă de claritate.</p>
-<h2>Un asistent virtual care aduce liniște în dialog</h2>
-<p>Un asistent virtual nu obosește, nu ridică tonul, nu se enervează. El traduce întrebările și răspunsurile în mesaje clare, pas cu pas. Iar când la mijloc apare și un translator vocal, barierele de limbă dispar și rămâne doar ideea.</p>
-<h2>Concluzie</h2>
-<p>Tehnologia nu ține loc de inimă sau empatie, dar poate fi puntea care ne lasă să ne vedem unii pe alții mai limpede. Iar uneori, asta este tot ce avem nevoie.</p>
+<h1>Exemplu – O conversație salvată de tehnologie</h1>
+<p>Era târziu, iar luminile orașului se vedeau în reflexia ecranului de laptop. Andrei își trecu mâna prin păr, pentru a nu știu câta oară, încercând să explice aceeași idee unui colaborator din altă țară. Cuvintele se loveau de un zid invizibil, iar tăcerile deveneau tot mai grele.</p>
+<p>Într-un moment de frustrare, privirea i-a căzut pe un mic balon de chat din colțul site-ului. „Pot să te ajut?”, scria acolo. Era un asistent virtual. Fără să mai gândească prea mult, a dat click. Întrebările clare și răspunsurile concise l-au ajutat să-și structureze mesajul. Apoi, un translator vocal cu traducere instantanee a făcut restul: vocea lui era auzită limpede, în limba partenerului.</p>
+<p>Deodată, expresia de pe chipul interlocutorului s-a schimbat. Din confuzie în înțelegere. Din tensiune în colaborare. Nu tehnologia ținuse loc de empatie, dar o făcuse posibilă.</p>
 </exemplu_superblog>
 """
 
-    # ---------------------------------------------------------
-    # PROMPT – extrem de clar: DOAR HTML, FĂRĂ ``` !!!
-    # ---------------------------------------------------------
+    # ------------------ PROMPT – DOAR HTML, POVESTE COMPLETĂ ------------------
     prompt = f"""
-Ești un autor premiat SuperBlog, cu stil de scriitor celebru (expresiv, emoțional, coerent)
-și expert SEO (structură, meta, H1–H3, cuvinte-cheie, lizibilitate).
+Ești un scriitor premiat, cu nivel literar (nu doar blogger), obișnuit să creeze
+povești cinematice și emoționale. În același timp, știi să respecți cerințe
+tehnice SuperBlog (cuvinte-cheie, linkuri, imagini) fără ca textul să pară
+publicitar sau artificial.
 
-Scopul: generezi un ARTICOL COMPLET, GATA DE PUBLICAT, pentru proba:
+Scrie un ARTICOL SUPERBLOG SUB FORMĂ DE POVESTE COMPLETĂ, în care:
 
-TITLUL OFICIAL AL PROBEI:
+- TOTUL este o poveste cu personaje, scene, atmosferă și emoții.
+- Nu scrii bullet-uri seci, ci le integrezi în descriere, dialog, gânduri.
+- Cuvintele-cheie, linkurile și imaginile sunt topite în narațiune, nu puse ca listă.
+
+==============================
+INFORMAȚII DIN PROBĂ:
+==============================
+
+TITLU OFICIAL PROBĂ:
 {probe_title}
 
-INTRO DIN PROBĂ:
+INTRO PROBĂ:
 {probe_intro}
 
-TEXT COMPLET AL PROBEI (doar ca material de lucru, nu de copiat mot-a-mot):
+TEXT COMPLET PROBĂ (NU îl copia întocmai, doar înțelege tema și cerințele):
 {full_text}
 
-SPONSORII DETECTAȚI ÎN PROBĂ:
+SPONSORI DETECTAȚI:
 {sponsor_links_text}
 
-IMAGINI DISPONIBILE (de folosit în <figure>):
-- main_image: {main_image}
-- second_image: {second_image}
-- third_image: {third_image}
+LINKURI PRINCIPALE PENTRU POVESTE:
+- RoboChat: {robochat_url}
+- Mobility: {mobility_url}
 
-================================================================
-EXEMPLU DE STIL (NU de copiat, doar ca referință de ton și structură):
-{example_article}
-================================================================
+IMAGINI DISPONIBILE:
+1) {main_image}
+2) {second_image}
+3) {third_image}
 
-CERINȚE OBLIGATORII PENTRU ARTICOL:
+==============================
+OBIECTIV:
+==============================
 
-1) RĂSPUNSUL TĂU TREBUIE SĂ FIE DOAR HTML VALID.
-   - NU folosi ``` sau blocuri de cod.
-   - NU adăuga explicații înainte sau după articol.
-   - Începe direct cu tagul <meta> sau <h1>.
+Creează o poveste în care personajul principal trece printr-o situație în care
+comunicarea eșuează (la muncă, într-o călătorie, într-o conversație importantă).
+Te rog:
 
-2) INCLUDE O META DESCRIERE SEO:
-   <meta name="description" content="maxim 155 de caractere, clar, atractiv, cu idee centrală">
+- să arăți frustrarea, emoțiile, zidurile invizibile între oameni;
+- apoi să lași tehnologia să apară ca sprijin (nu erou salvator),
+  sub forma:
+    * unui asistent virtual (RoboChat)
+    * unui translator vocal cu traducere instantanee (Mobility);
 
-3) INCLUDE UN TITLU FERMECĂTOR:
-   <h1>un titlu creativ, diferit de titlul oficial al probei, dar relevant</h1>
+- să integrezi tehnologia astfel:
+    * Personajul descoperă un asistent virtual pe un site și vede că îl ajută
+      să formuleze, să clarifice, să răspundă (asistent virtual).
+    * Personajul folosește un translator vocal cu traducere instantanee pentru
+      a vorbi cu cineva din altă țară sau alt context (translator vocal, traducere instantanee).
 
-4) STRUCTURĂ CLARĂ, CU H2 / H3:
-   - <h2>Provocarea: când comunicarea se complică</h2>
-   - <h2>Asistentul virtual care schimbă experiența</h2>
-       <h3>Ce face diferit?</h3>
-       <ul>3–5 beneficii clare (disponibilitate, claritate, timp câștigat etc.)</ul>
-       <h3>De ce pare mai uman?</h3>
-       <p>explică empatia digitală, tonul calm, răbdarea, claritatea</p>
+- să introduci linkurile în mod NATURAL:
+    * de exemplu: „a deschis site-ul <a href=\\"{robochat_url}\\" target=\\"_blank\\">RoboChat</a>”
+    * și: „a activat <a href=\\"{mobility_url}\\" target=\\"_blank\\">Mobility</a>, un translator vocal cu traducere instantanee”
 
-   - <h2>Translatorul vocal cu traducere instantanee</h2>
-       <h3>Exemplu narativ</h3>
-       <p>poveste scurtă, concretă (reală sau imaginară) în care un translator vocal salvează conversația</p>
+==============================
+STRUCTURĂ CERUTĂ (DAR TOTUL CA POVESTE):
+==============================
 
-   - <h2>Înainte și după: cum se transformă experiența</h2>
-       <p>compară o situație fără tehnologie vs. una cu asistent virtual + translator vocal</p>
+Răspunsul tău trebuie să fie DOAR HTML, astfel:
 
-   - <h2>Concluzie</h2>
-       <p>mesaj inspirațional, uman, care să lase cititorul cu o emoție și o idee clară</p>
+1) META-DESCRIERE SEO (max 155 caractere, rezumă emoția poveștii):
+   <meta name="description" content="...">
 
-5) IMAGINI ÎNTEGRATE ÎN ARTICOL (dacă există linkuri):
-   – Dacă {main_image} nu este gol, inserează:
+2) TITLU (poetic, atractiv, de tip literar, dar clar):
+   <h1>...</h1>
+
+3) TEXT NARATIV (povestea completă, 800+ cuvinte):
+   - nu pune subtitluri „tehnice” gen „Asistentul virtual care...” ca H2 separate,
+     decât dacă le integrezi foarte natural în ton narativ;
+   - poți folosi <h2> sau <h3> ca „capitole” ale poveștii (ex: <h2>Dimineața în care totul a sunat greșit</h2>),
+     dar nu scrie ca într-un manual, ci ca într-o nuvelă.
+
+4) INTEGRAREA IMAGINILOR:
+   - Dacă {main_image} nu e gol, integrează-l într-un moment cheie al poveștii,
+     de exemplu când personajul deschide site-ul / vede chatbotul:
+
      <figure>
-         <img src="{main_image}" alt="Imagine din sursa probei">
-         <figcaption>O reprezentare vizuală a comunicării asistate de tehnologie.</figcaption>
+         <img src="{main_image}" alt="Imagine asociată poveștii și tehnologiei">
+         <figcaption>O fereastră mică de chat care schimbă o conversație mare.</figcaption>
      </figure>
 
-   – Dacă {second_image} există, inserează într-o secțiune relevantă (de ex. la translator vocal):
-     <figure>
-         <img src="{second_image}" alt="Imagine asociată Mobility sau traducerii instantanee">
-         <figcaption>Tehnologia care traduce vocea în timp real.</figcaption>
-     </figure>
+   - Dacă {second_image} există, integreaz-o în scena în care apare translatorul vocal Mobility.
+   - Dacă {third_image} există, integreaz-o spre final, ca simbol al unei lumi
+     în care oamenii și tehnologia se ascultă.
 
-   – Dacă {third_image} există, inserează în apropierea concluziei sau a ideii de viitor.
+5) CUVINTE-CHEIE OBLIGATORII (DE INTEGRAT NATURAL ÎN POVESTE):
+   - asistent virtual
+   - translator vocal
+   - traducere instantanee
 
-6) LINKURI CĂTRE SPONSORI (DACĂ EXISTĂ ÎN SPONSORS):
-   – Dacă printre sponsori se regăsește un link care conține "robochat":
-       Folosește-l într-un paragraf de forma:
-       <a href="LINK_ROBOCHAT" target="_blank">RoboChat</a>
+   NU le pune ca listă. Folosește-le în propoziții firești.
 
-   – Dacă există un link care conține "mobility.robochat.pro":
-       Folosește-l într-un paragraf de forma:
-       <a href="LINK_MOBILITY" target="_blank">Mobility</a>
-
-   – Dacă nu e găsit nimic, poți folosi aceste linkuri implicite:
-       <a href="https://robochat.ro" target="_blank">RoboChat</a>
-       <a href="https://mobility.robochat.pro" target="_blank">Mobility</a>
-
-7) CUVINTE-CHEIE OBLIGATORII:
-   Integrează NATURAL (fără listă artificială) următoarele expresii:
-   – asistent virtual
-   – translator vocal
-   – traducere instantanee
-
-8) TONUL ARTICOLULUI:
+6) TON:
    Stil: {style_instruction}
-   – 0% ton robotic
-   – 100% uman, fluid, coerent, cu fraze frumoase, dar clare
-   – combinație de poveste + reflecție + beneficii practice
-   – respectă cât mai fidel spiritul și tema reală a probei (nu inventa cerințe)
+   – cinematic
+   – cu descrieri vizuale
+   – cu dialoguri (măcar în 1-2 locuri)
+   – cu introspecție (personajul își pune întrebări, are trăiri)
+   – fără ton de reclamă, fără superlative goale.
 
-IMPORTANT:
-– NU încadra răspunsul în ``` sau în alt tip de bloc de cod.
-– Răspunsul tău trebuie să fie DOAR HTML, gata de copiat în WordPress.
+7) EXEMPLU DE STIL (DOAR CA REFERINȚĂ, NU DE COPIAT):
+{example_article}
+
+==============================
+CERINȚE TEHNICE FINALE:
+==============================
+
+- Răspunsul tău trebuie să fie DOAR HTML.
+- Nu folosi ``` sau blocuri de cod.
+- Nu adăuga explicații în afara articolului.
+- Nu scrie metasau text în afara tagurilor HTML.
 """
 
+    # ------------------ APEL LA MODEL ------------------
     response = client.chat.completions.create(
-        model="gpt-4.1",  # model puternic, bun pentru astfel de task-uri
+        model="gpt-4o-mini",  # model compatibil și suficient de bun + ieftin
         messages=[
             {
                 "role": "system",
                 "content": (
                     "Ești un autor premiat SuperBlog, cu stil de scriitor celebru, "
-                    "și expert SEO în structura articolelor pentru bloguri WordPress."
+                    "și expert SEO în structurarea articolelor HTML pentru bloguri WordPress. "
+                    "Scrii povești care par 100% umane, nu generate de AI."
                 ),
             },
             {"role": "user", "content": prompt},
         ],
         max_tokens=3500,
-        temperature=0.8,
+        temperature=0.9,
     )
 
-    # noul SDK folosește .message.content
+    # în noul SDK, conținutul este în .message.content
     return response.choices[0].message.content
+
 
 
