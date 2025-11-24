@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-def extract_probe_data(url: str) -> dict:
+def extract_data(url: str) -> dict:
     output = {
         "probe_title": "",
         "intro": "",
