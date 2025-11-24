@@ -15,8 +15,10 @@ tasks_lock = threading.Lock()
 
 
 def background_generate(task_id: str, probe_url: str, style: str):
+    """Rulează generarea articolului în fundal."""
     try:
         extracted = extract_probe_data(probe_url)
+
         if extracted.get("error"):
             with tasks_lock:
                 tasks[task_id]["status"] = "error"
@@ -54,11 +56,13 @@ def index():
     if not probe_url:
         return render_template("index.html", error="Te rog introdu linkul probei SuperBlog.")
 
+    # Creare task ID unic
     task_id = str(uuid.uuid4())
     with tasks_lock:
         tasks[task_id] = {"status": "pending", "result": None, "error": None}
 
     executor.submit(background_generate, task_id, probe_url, style)
+
     return redirect(url_for("task_status", task_id=task_id))
 
 
@@ -76,9 +80,7 @@ def task_status(task_id):
             result=None,
         )
 
-    status = task["status"]
-
-    if status == "pending":
+    if task["status"] == "pending":
         return render_template(
             "task_status.html",
             status="pending",
@@ -87,16 +89,18 @@ def task_status(task_id):
             result=None,
         )
 
-    if status == "error":
+    if task["status"] == "error":
         return render_template(
             "task_status.html",
             status="error",
-            message=f"A apărut o eroare la generare: {task.get('error')}",
+            message=f"Eroare la generare: {task.get('error')}",
             task_id=task_id,
             result=None,
         )
 
+    # Task OK – rezultatul este gata
     result = task["result"]
+
     return render_template(
         "result.html",
         title=result["title"],
@@ -125,7 +129,7 @@ def publish():
         return render_template(
             "publish_result.html",
             success=True,
-            message="Articolul a fost trimis cu succes către WordPress.",
+            message="Articolul a fost publicat cu succes în WordPress.",
             post_url=post_url,
         )
 
