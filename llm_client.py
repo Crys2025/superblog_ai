@@ -3,141 +3,120 @@ import os
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def generate_article(extracted, style: str = "balanced"):
-    probe_title = extracted.get("probe_title", "Articol SuperBlog")
-    probe_intro = extracted.get("intro", "")
-    full_text = extracted.get("full_text", "")
-    sponsors = extracted.get("sponsors", [])
-    images = extracted.get("images", [])
+SYSTEM_PROMPT = """
+Ești un autor de nivel literar, comparabil cu un scriitor celebru, creativ,
+emoțional, profund și coerent. Scrii articole SuperBlog la nivel câștigător,
+combinând:
 
-    sponsor_links_text = ""
-    if sponsors:
-        for s in sponsors:
-            name = s.get("name", "").strip()
-            url = s.get("url", "").strip()
-            if name and url:
-                sponsor_links_text += f"- <a href='{url}' target='_blank'>{name}</a>\n"
-    else:
-        sponsor_links_text = "- (Niciun sponsor detectat în această probă)"
+– storytelling memorabil
+– structură SEO impecabilă
+– integrare naturală a cerințelor
+– ton empatic și profesionist
+– HTML complet compatibil WordPress
 
-    main_image = images[0] if images else ""
+Ești în același timp expert SEO senior:
+– folosești corect meta-descrieri
+– titluri H1/H2/H3
+– cuvinte-cheie integrate natural
+– densitate optimă pentru Google
+– imagini HTML (<figure>)
+– linkuri sponsori
+– claritate și indexare superioară
 
-    style_map = {
-        "story": "Ton narativ, cald, emoțional, cu exemple personale sau imaginare.",
-        "marketing": "Ton orientat pe beneficii, clar, persuasiv, dar natural și etic.",
-        "balanced": "Ton echilibrat între poveste și explicație, foarte potrivit pentru SuperBlog.",
-        "journalistic": "Ton jurnalistic, informat, cu structură clară și argumente logice.",
-        "playful": "Ton jucăuș, prietenos, cu umor fin și metafore.",
-        "formal": "Ton mai serios, bine structurat, cu atenție la formulare și claritate.",
+Eviti orice limbaj robotic. Scrii 100% uman, cald și expresiv.
+"""
+
+
+def generate_article_from_url(url: str, style: str):
+    """
+    Analizează complet pagina probei (GPT-5.1 cu browsing),
+    extrage cerințele + imagini + linkuri + structură,
+    și generează un articol COMPLET în HTML.
+    """
+
+    style_presets = {
+        "balanced": "echilibrat, narativ, profesional, cu voce caldă și structură impecabilă.",
+        "story": "puternic narativ, cinematic, emoțional, cu atmosferă și detalii senzoriale.",
+        "marketing": "persuasiv, orientat pe beneficii, energic, clar și ușor de citit.",
+        "journalistic": "obiectiv, solid, documentat, cu logică editorială și citate.",
+        "playful": "jucăuș, amuzant, creativ, cu un ton prietenos.",
+        "formal": "academic, elevat, riguros, cu formulari elegante."
     }
-    style_instruction = style_map.get(style, style_map["balanced"])
 
-    example_article = """
-<exemplu_superblog>
-<h1>Exemplu SuperBlog – Cum tehnologia poate repara o conversație</h1>
-<p>Uneori, cea mai dificilă parte într-o discuție nu este ceea ce spui, ci ceea ce celălalt înțelege. Ne pierdem în cuvinte, ton, emoții – iar o conversație care putea fi frumoasă se transformă într-o neînțelegere.</p>
-<h2>Când cuvintele se lovesc de pereți</h2>
-<p>Am trăit asta cu un coleg din altă țară. Eu încercam să explic o idee simplă, el încerca să mă înțeleagă. Nu ne certa nimeni, dar simțeam cum răbdarea ne scade cu fiecare propoziție.</p>
-<h2>O tehnologie care nu îți răpește vocea, ci ți-o clarifică</h2>
-<h3>Ce poate face un asistent modern?</h3>
-<ul>
-<li>ascultă fără să întrerupă și nu obosește</li>
-<li>traduce intenții, nu doar cuvinte</li>
-<li>lasă omul să fie om, fără presiune</li>
-</ul>
-<h3>De ce pare mai uman decât un om?</h3>
-<p>Nu pentru că e mai bun, ci pentru că e mereu calm, rabdător și egal. Uneori, asta e tot ce avem nevoie pentru a continua discuția.</p>
-<h2>O poveste scurtă</h2>
-<p>Cu ajutorul unui translator vocal, am reușit să am în sfârșit o conversație firească cu acel coleg. Nu perfectă – dar clară. Și asta a schimbat totul.</p>
-<h2>Concluzie</h2>
-<p>Tehnologia potrivită nu înlocuiește oamenii, dar poate salva conversații, relații și timp. Într-o lume grăbită, poate fi sprijinul discret de care avem nevoie.</p>
-</exemplu_superblog>
-"""
+    chosen_style = style_presets.get(style, style_presets["balanced"])
 
-    prompt = f"""
-Ești un autor premiat SuperBlog, cu stil de scriitor celebru: expresiv, coerent, emoțional.
-Ești și expert SEO: folosești H1-H3 corect, scrii meta descriere, integrezi natural cuvinte-cheie.
+    user_prompt = f"""
+Analizează complet pagina probei de la linkul următor folosind browsing:
 
-Scrii un articol COMPLET, în HTML, pentru o probă SuperBlog.
+{url}
 
-========================
-EXEMPLU DE STIL SUPERBLOG:
-{example_article}
-========================
+Extrage automat:
+– titlul oficial al probei
+– textul complet
+– cerințele obligatorii tehnice
+– sponsorii + linkurile acestora
+– imaginile relevante (minim 3 dacă există)
+– cuvintele-cheie cerute
+– tonul recomandat
+– informațiile suplimentare utile
 
-TITLUL PROBEI:
-{probe_title}
+Apoi generează un ARTICOL SUPERBLOG PREMIUM gata de publicat în WordPress,
+conform cerințelor oficiale.
 
-INTRO DIN PROBĂ:
-{probe_intro}
+STRUCTURA OBLIGATORIE A ARTICOLULUI:
 
-TEXT COMPLET AL PROBEI (DOAR CA SURSA DE INSPIRAȚIE, NU DE COPIAT):
-{full_text}
-========================
+1) META-DESCRIERE (max 155 caractere, SEO)
+   <meta name="description" content="...">
 
-SPONSORII PROBEI (folosește-i în articol, cu linkuri HTML):
-{sponsor_links_text}
+2) TITLU FINAL (stil {chosen_style})
+   <h1>...</h1>
 
-========================
-STRUCTURA OBLIGATORIE A ARTICOLULUI (HTML):
+3) INTRODUCERE STORYTELLING (emoțională)
+   – context
+   – atmosferă
+   – micro-poveste reală/ficțională
 
-1) Meta descriere SEO sub formă de comentariu HTML:
-<!-- meta-description: (max 155 de caractere, foarte atractivă și clară) -->
+4) CORPUL ARTICOLULUI (H2 / H3)
+   – integrare naturală a cuvintelor-cheie:
+        * asistent virtual
+        * translator vocal
+        * traducere instantanee
+   – integrare de linkuri către sponsori:
+        * RoboChat → https://robochat.ro
+        * Mobility → https://mobility.robochat.pro
+   – exemple
+   – povestiri
+   – comparații „înainte/după”
 
-2) <h1>Titlu final atractiv, diferit de titlul oficial al probei, dar relevant</h1>
+5) IMAGINI ÎN HTML (minim 2–3)
+   Folosește formatul:
+   <figure>
+       <img src="LINK" alt="descriere">
+       <figcaption>descriere scurtă</figcaption>
+   </figure>
 
-3) Introducere (1-3 paragrafe) – poveste scurtă, emoție, context.
+6) SECTIUNE REFLECTIVĂ (creștere, viitor, umanitate)
 
-4) <h2>Provocarea: când comunicarea se complică</h2>
-   - descrie o situație dificilă de comunicare (om-om sau om-tehnologie).
+7) CONCLUZIE EMOȚIONALĂ (memorabilă)
 
-5) <h2>Asistentul virtual care schimbă experiența</h2>
-   <h3>Ce face diferit?</h3>
-   - listă cu 3-5 beneficii clare (ul/li).
-   <h3>De ce pare mai uman?</h3>
-   - explică empatia digitală, claritatea, timpul câștigat.
+TONUL ARTICOLULUI PENTRU ACEST REQUEST:
+– stil {chosen_style}
+– 0% robotic
+– 100% uman, cursiv, cald
 
-6) <h2>Translatorul vocal cu traducere instantanee</h2>
-   <h3>Exemplu narativ</h3>
-   - poveste scurtă (reală sau imaginară) în care un translator vocal salvează situația.
-
-7) <h2>Imagine reprezentativă</h2>
-   - inserează un element <figure> cu o imagine relevantă, de forma:
-     <figure>
-         <img src="{main_image}" alt="Imagine din sursa probei" />
-         <figcaption>Legendă scurtă.</figcaption>
-     </figure>
-
-8) <h2>Înainte și după: cum se transformă experiența</h2>
-   - compară experiența fără tehnologie vs. cu tehnologie.
-
-9) <h2>Concluzie</h2>
-   - închide articolul cu un mesaj inspirațional.
-
-========================
-CUVINTE-CHEIE OBLIGATORII (INTEGREAZĂ-LE NATURAL):
-- asistent virtual
-- translator vocal
-- traducere instantanee
-
-========================
-TON:
-{style_instruction}
-
-Nu copia fraze întregi din textul probei. Reformulează totul într-un stil original,
-uman, fluent și plăcut de citit. Fără ton robotic, fără clișee de reclamă.
-
-La final NU mai adăuga nimic în afara articolului HTML.
-"""
+GENEREAZĂ DOAR HTML, FĂRĂ EXPLICAȚII."""
+    
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5.1",  # cea mai bună calitate
         messages=[
-            {"role": "system", "content": "Ești un autor premiat SuperBlog, cu stil de scriitor celebru, și expert SEO."},
-            {"role": "user", "content": prompt}
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt}
         ],
-        max_tokens=2600,
-        temperature=0.85,
+        tools=[{"type": "web_browser"}],
+        max_tokens=8000,
+        temperature=0.85
     )
 
-    return response.choices[0].message.content
+    return response.choices[0].message["content"]
+
