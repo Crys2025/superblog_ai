@@ -1,48 +1,76 @@
-{% extends "base.html" %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>SuperBlog AI – Generator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
 
-{% if error %}
-<div class="alert alert-error">{{ error }}</div>
-{% endif %}
+<div class="container">
+    <h1>Generator Articole SuperBlog</h1>
 
-<section class="generator-form">
-    <h2>Generează un articol SuperBlog</h2>
-    <p class="editor-intro">
-        Introdu linkul unei probe SuperBlog, alege stilul dorit și lasă AI-ul să construiască un articol
-        complet, structură premium, gata de publicare în WordPress.
-    </p>
+    <form method="POST" action="/" class="form-box">
 
-    <form method="post">
-        <div class="form-row">
-            <label for="probe_url">Link probă SuperBlog</label>
-            <input type="url" id="probe_url" name="probe_url" placeholder="https://blog.super-blog.eu/..." required>
-        </div>
+        <!-- LINK PROBĂ -->
+        <label for="url">Link către proba SuperBlog:</label>
+        <input type="url" id="url" name="url" required placeholder="https://blog.super-blog.eu/proba-XX..." />
 
-        <div class="form-row">
-            <label for="style">Stil de scriere</label>
-            <select id="style" name="style">
-                <option value="balanced" selected>Echilibrat (recomandat)</option>
-                <option value="story">Povestit, emoțional</option>
-                <option value="marketing">Orientat pe beneficii (soft marketing)</option>
-                <option value="journalistic">Jurnalistic / informativ</option>
-                <option value="playful">Jucăuș, cu umor fin</option>
-                <option value="formal">Mai formal, structurat</option>
-            </select>
-        </div>
+        <!-- STIL DE SCRIERE -->
+        <label for="style">Stil de scriere:</label>
+        <select id="style" name="style">
+            <option value="balanced">Balanced (echilibrat)</option>
+            <option value="story">Story (cinematic)</option>
+            <option value="marketing">Marketing soft</option>
+            <option value="journalistic">Jurnalistic</option>
+            <option value="playful">Playful (jucăuș)</option>
+            <option value="formal">Formal</option>
+        </select>
 
-        <div class="editor-actions">
-            <button type="submit" class="btn-primary">Generează articolul</button>
-        </div>
+        <hr>
+
+        <!-- NUMĂR MINIM DE CUVINTE -->
+        <label for="target_words">Număr minim de cuvinte:</label>
+        <select id="target_words" name="target_words">
+            <option value="800">800</option>
+            <option value="900" selected>900</option>
+            <option value="1100">1100</option>
+            <option value="1300">1300</option>
+            <option value="1500">1500</option>
+        </select>
+
+        <!-- IMAGINI MIN/MAX -->
+        <label for="min_images">Număr minim imagini integrate:</label>
+        <select id="min_images" name="min_images">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+        </select>
+
+        <label for="max_images">Număr maxim imagini integrate:</label>
+        <select id="max_images" name="max_images">
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+
+        <!-- LINKURI MINIME -->
+        <label for="min_links">Număr minim linkuri în articol:</label>
+        <select id="min_links" name="min_links">
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+
+        <!-- CUVINTE-CHEIE PERSONALIZATE -->
+        <label for="keywords">Cuvinte-cheie personalizate (separate prin virgulă):</label>
+        <input type="text" id="keywords" name="keywords" placeholder="asistent virtual, translator vocal, traducere instantanee" />
+
+        <button type="submit">Generează articol</button>
     </form>
-</section>
+</div>
 
-<section class="tips">
-    <h2>Tips pentru un articol de nivel premiu</h2>
-    <ol>
-        <li>Adaugă 2-3 propoziții din experiența ta personală.</li>
-        <li>Verifică să fie integrate corect cerințele tehnice ale probei (cuvinte-cheie, linkuri, număr de cuvinte).</li>
-        <li>Adaugă propriile imagini sau adaptează textul la stilul blogului tău.</li>
-    </ol>
-</section>
+</body>
+</html>
 
-{% endblock %}
