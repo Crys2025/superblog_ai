@@ -5,34 +5,17 @@ import os
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-def generate_article(
-    extracted,
-    style: str = "balanced",
-    target_words: int = 900,
-    min_images: int = 2,
-    max_images: int = 4,
-    min_links: int = 2,
-    required_keywords=None,
-):
+def generate_article(extracted, style: str = "balanced"):
     """
     Generează un articol SuperBlog sub formă de POVESTE cinematică,
     integrând natural:
       - cerințele din enunțul probei (text, ton)
       - sponsorii și linkurile lor
       - imaginile disponibile
-      - cuvintele-cheie obligatorii (implicit):
+      - cuvintele-cheie obligatorii:
           * asistent virtual
           * translator vocal
           * traducere instantanee
-
-    Parametri de control (pentru dropdown-uri în UI):
-      - style: tipul de stil (balanced, story, marketing, journalistic, playful, formal)
-      - target_words: număr minim de cuvinte (ex: 800, 900, 1200)
-      - min_images: număr minim de imagini <figure> de integrat
-      - max_images: număr maxim de imagini (dacă există suficiente)
-      - min_links: număr minim de linkuri <a href="...">
-      - required_keywords: listă de cuvinte-cheie de integrat în text;
-        dacă este None, se folosește setul standard pentru proba RoboChat/Mobility.
 
     `extracted` este dict-ul de la scraper.py și conține:
       - probe_title
@@ -79,17 +62,9 @@ def generate_article(
         mobility_url = "https://mobility.robochat.pro"
 
     # ------------------ IMAGINI ------------------
-    # Folosim câte imagini avem, dar nu mai multe decât max_images
-    limited_images = images[: max_images] if images else []
-    # Vom explica în prompt cum să folosească între min_images și max_images din aceste linkuri
-
-    # ------------------ CUVINTE-CHEIE ------------------
-    if required_keywords is None or not isinstance(required_keywords, (list, tuple)) or len(required_keywords) == 0:
-        required_keywords = [
-            "asistent virtual",
-            "translator vocal",
-            "traducere instantanee",
-        ]
+    main_image = images[0] if len(images) > 0 else ""
+    second_image = images[1] if len(images) > 1 else ""
+    third_image = images[2] if len(images) > 2 else ""
 
     # ------------------ STILURI ------------------
     style_map = {
@@ -112,23 +87,12 @@ def generate_article(
 </exemplu_superblog>
 """
 
-    # ------------------ PREGĂTIM LISTA DE IMAGINI PENTRU PROMPT ------------------
-    if limited_images:
-        images_for_prompt = "\n".join(
-            f"{idx + 1}) {url}" for idx, url in enumerate(limited_images)
-        )
-    else:
-        images_for_prompt = "(Nu există imagini detectate în probă.)"
-
-    # ------------------ PREGĂTIM LISTA DE CUVINTE-CHEIE ------------------
-    keywords_for_prompt = "\n".join(f"- {kw}" for kw in required_keywords)
-
     # ------------------ PROMPT – DOAR HTML, POVESTE COMPLETĂ ------------------
     prompt = f"""
 Ești un scriitor premiat, cu nivel literar (nu doar blogger), obișnuit să creeze
 povești cinematice și emoționale. În același timp, știi să respecți cerințe
-tehnice SuperBlog (cuvinte-cheie, linkuri, imagini, lungime minimă) fără ca
-textul să pară publicitar sau artificial.
+tehnice SuperBlog (cuvinte-cheie, linkuri, imagini) fără ca textul să pară
+publicitar sau artificial.
 
 Scrie un ARTICOL SUPERBLOG SUB FORMĂ DE POVESTE COMPLETĂ, în care:
 
@@ -156,55 +120,34 @@ LINKURI PRINCIPALE PENTRU POVESTE:
 - RoboChat: {robochat_url}
 - Mobility: {mobility_url}
 
-IMAGINI DISPONIBILE (de folosit în articol):
-{images_for_prompt}
+IMAGINI DISPONIBILE:
+1) {main_image}
+2) {second_image}
+3) {third_image}
 
 ==============================
-CERINȚE CONFIGURABILE (DIN UI):
+OBIECTIV:
 ==============================
 
-1) LUNGIME TEXT:
-   - Articolul trebuie să aibă CEL PUȚIN {target_words} cuvinte.
-   - Dacă inițial povestea e mai scurtă, continuă cu:
-       * descriere de atmosferă
-       * detalii emoționale
-       * dialoguri suplimentare
-       * reflecții ale personajului
-   până când ajungi la cel puțin {target_words} cuvinte.
+Creează o poveste în care personajul principal trece printr-o situație în care
+comunicarea eșuează (la muncă, într-o călătorie, într-o conversație importantă).
+Te rog:
 
-2) IMAGINI:
-   - Integrează între {min_images} și {max_images} imagini <figure>, dacă există suficiente linkuri.
-   - Folosește linkurile de mai sus în momente-cheie ale poveștii
-     (când personajul descoperă site-ul, când folosește tehnologia, când trage concluzia).
-   - Fiecare imagine trebuie să fie însoțită de:
-       <figure>
-           <img src="LINK" alt="descriere scurtă, clară">
-           <figcaption>legendă scurtă, poetică, dar clară.</figcaption>
-       </figure>
+- să arăți frustrarea, emoțiile, zidurile invizibile între oameni;
+- apoi să lași tehnologia să apară ca sprijin (nu erou salvator),
+  sub forma:
+    * unui asistent virtual (RoboChat)
+    * unui translator vocal cu traducere instantanee (Mobility);
 
-3) LINKURI:
-   - Folosește CEL PUȚIN {min_links} linkuri <a href="..."> în text.
-   - Minim:
-       * un link către RoboChat: <a href="{robochat_url}" target="_blank">RoboChat</a>
-       * un link către Mobility: <a href="{mobility_url}" target="_blank">Mobility</a>
-   - Poți integra și alte linkuri din lista sponsorilor, dacă sunt relevante, dar fără reclamă agresivă.
+- să integrezi tehnologia astfel:
+    * Personajul descoperă un asistent virtual pe un site și vede că îl ajută
+      să formuleze, să clarifice, să răspundă (asistent virtual).
+    * Personajul folosește un translator vocal cu traducere instantanee pentru
+      a vorbi cu cineva din altă țară sau alt context (translator vocal, traducere instantanee).
 
-4) CUVINTE-CHEIE (OBLIGATORIU DE INCLUS NATURAL ÎN POVESTE):
-{keywords_for_prompt}
-
-   - Folosește fiecare cuvânt-cheie cel puțin o dată.
-   - Integrează-le în propoziții firești, de exemplu:
-       „a descoperit un asistent virtual pe site…”
-       „a pornit un translator vocal cu traducere instantanee…”
-   - Nu face listă de cuvinte-cheie; trebuie să fie organic în text.
-
-5) STIL DE SCRIERE:
-   Stil selectat: {style} → {style_instruction}
-   - păstrează tonul narativ cinematic
-   - descrieri vizuale
-   - dialoguri (1–3 dialoguri scurte)
-   - introspecție (personajul își pune întrebări, simte, reacționează)
-   - fără ton de reclamă, fără superlative goale.
+- să introduci linkurile în mod NATURAL:
+    * de exemplu: „a deschis site-ul <a href=\\"{robochat_url}\\" target=\\"_blank\\">RoboChat</a>”
+    * și: „a activat <a href=\\"{mobility_url}\\" target=\\"_blank\\">Mobility</a>, un translator vocal cu traducere instantanee”
 
 ==============================
 STRUCTURĂ CERUTĂ (DAR TOTUL CA POVESTE):
@@ -218,19 +161,41 @@ Răspunsul tău trebuie să fie DOAR HTML, astfel:
 2) TITLU (poetic, atractiv, de tip literar, dar clar):
    <h1>...</h1>
 
-3) TEXT NARATIV (povestea completă, {target_words}+ cuvinte):
-   - Poți folosi <h2> sau <h3> ca „capitole” ale poveștii (ex: <h2>Dimineața în care totul a sunat greșit</h2>),
+3) TEXT NARATIV (povestea completă, 800+ cuvinte):
+   - nu pune subtitluri „tehnice” gen „Asistentul virtual care...” ca H2 separate,
+     decât dacă le integrezi foarte natural în ton narativ;
+   - poți folosi <h2> sau <h3> ca „capitole” ale poveștii (ex: <h2>Dimineața în care totul a sunat greșit</h2>),
      dar nu scrie ca într-un manual, ci ca într-o nuvelă.
 
 4) INTEGRAREA IMAGINILOR:
-   - Folosește între {min_images} și {max_images} <figure> cu imaginile din lista de mai sus, dacă există suficiente.
+   - Dacă {main_image} nu e gol, integrează-l într-un moment cheie al poveștii,
+     de exemplu când personajul deschide site-ul / vede chatbotul:
 
-5) CUVINTE-CHEIE:
-   - Include toate cuvintele-cheie specificate, natural, în fraze.
+     <figure>
+         <img src="{main_image}" alt="Imagine asociată poveștii și tehnologiei">
+         <figcaption>O fereastră mică de chat care schimbă o conversație mare.</figcaption>
+     </figure>
 
-==============================
-EXEMPLU DE STIL (DOAR CA REFERINȚĂ, NU DE COPIAT):
-==============================
+   - Dacă {second_image} există, integreaz-o în scena în care apare translatorul vocal Mobility.
+   - Dacă {third_image} există, integreaz-o spre final, ca simbol al unei lumi
+     în care oamenii și tehnologia se ascultă.
+
+5) CUVINTE-CHEIE OBLIGATORII (DE INTEGRAT NATURAL ÎN POVESTE):
+   - asistent virtual
+   - translator vocal
+   - traducere instantanee
+
+   NU le pune ca listă. Folosește-le în propoziții firești.
+
+6) TON:
+   Stil: {style_instruction}
+   – cinematic
+   – cu descrieri vizuale
+   – cu dialoguri (măcar în 1-2 locuri)
+   – cu introspecție (personajul își pune întrebări, are trăiri)
+   – fără ton de reclamă, fără superlative goale.
+
+7) EXEMPLU DE STIL (DOAR CA REFERINȚĂ, NU DE COPIAT):
 {example_article}
 
 ==============================
@@ -240,31 +205,26 @@ CERINȚE TEHNICE FINALE:
 - Răspunsul tău trebuie să fie DOAR HTML.
 - Nu folosi ``` sau blocuri de cod.
 - Nu adăuga explicații în afara articolului.
-- Nu scrie text în afara tagurilor HTML.
+- Nu scrie metasau text în afara tagurilor HTML.
 """
 
     # ------------------ APEL LA MODEL ------------------
     response = client.chat.completions.create(
-        model="gpt-4o",  
+        model="gpt-4o-mini",  # model compatibil și suficient de bun + ieftin
         messages=[
             {
                 "role": "system",
                 "content": (
                     "Ești un autor premiat SuperBlog, cu stil de scriitor celebru, "
                     "și expert SEO în structurarea articolelor HTML pentru bloguri WordPress. "
-                    "Scrii povești care par 100% umane, nu generate de AI. "
-                    "Respecți strict cerințele de lungime minimă, imagini, linkuri și cuvinte-cheie."
+                    "Scrii povești care par 100% umane, nu generate de AI."
                 ),
             },
             {"role": "user", "content": prompt},
         ],
-        max_completion_tokens=3500,
-    temperature=0.9,
+        max_tokens=5000,
+        temperature=0.9,
     )
 
     # în noul SDK, conținutul este în .message.content
     return response.choices[0].message.content
-
-
-
-
