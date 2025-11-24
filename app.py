@@ -1,116 +1,149 @@
-from flask import Flask, render_template, request, jsonify
-from concurrent.futures import ThreadPoolExecutor
-import uuid
-
+from flask import Flask, render_template, request, redirect, url_for
 from scraper import extract_probe_data
 from llm_client import generate_article
+from wordpress_client import publish_post, WordPressError
+
+from concurrent.futures import ThreadPoolExecutor
+import threading
+import uuid
 
 app = Flask(__name__)
 
-# Executor pentru procesare în background (evită timeouts)
-executor = ThreadPoolExecutor(max_workers=3)
-
-# Task storage (simplu, doar în memorie)
-TASKS = {}
+executor = ThreadPoolExecutor(max_workers=2)
+tasks = {}
+tasks_lock = threading.Lock()
 
 
-@app.route("/", methods=["GET"])
+def background_generate(task_id: str, probe_url: str, style: str):
+    try:
+        extracted = extract_probe_data(probe_url)
+        if extracted.get("error"):
+            with tasks_lock:
+                tasks[task_id]["status"] = "error"
+                tasks[task_id]["error"] = extracted["error"]
+            return
+
+        article = generate_article(extracted, style)
+        images = extracted.get("images", [])[:12]
+
+        result = {
+            "title": extracted.get("probe_title", "Proba SuperBlog"),
+            "article": article,
+            "images": images,
+            "probe_url": probe_url,
+        }
+
+        with tasks_lock:
+            tasks[task_id]["status"] = "done"
+            tasks[task_id]["result"] = result
+
+    except Exception as e:
+        with tasks_lock:
+            tasks[task_id]["status"] = "error"
+            tasks[task_id]["error"] = str(e)
+
+
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template("index.html")
+    if request.method == "GET":
+        return render_template("index.html")
 
-
-@app.route("/", methods=["POST"])
-def start_generation():
-    # Preluăm linkul
-    probe_url = request.form.get("probe_url")
-
-    if not probe_url:
-        return render_template("index.html", error="Te rog introdu un link valid.")
-
-    # Stil de scriere
+    probe_url = request.form.get("probe_url", "").strip()
     style = request.form.get("style", "balanced")
 
-    # Opțiuni avansate
-    min_words = int(request.form.get("min_words", 900))
-    min_images = int(request.form.get("min_images", 2))
-    max_images = int(request.form.get("max_images", 3))
-    min_links = int(request.form.get("min_links", 2))
+    if not probe_url:
+        return render_template("index.html", error="Te rog introdu linkul probei SuperBlog.")
 
-    raw_keywords = request.form.get("custom_keywords", "").strip()
-    if raw_keywords:
-        custom_keywords = [k.strip() for k in raw_keywords.split(",") if k.strip()]
-    else:
-        custom_keywords = None
-
-    # ID unic task
     task_id = str(uuid.uuid4())
-    TASKS[task_id] = {"status": "running", "result": None}
+    with tasks_lock:
+        tasks[task_id] = {"status": "pending", "result": None, "error": None}
 
-    # Rulează în background
-    executor.submit(
-        run_generation_task,
-        task_id,
-        probe_url,
-        style,
-        min_words,
-        min_images,
-        max_images,
-        min_links,
-        custom_keywords,
+    executor.submit(background_generate, task_id, probe_url, style)
+    return redirect(url_for("task_status", task_id=task_id))
+
+
+@app.route("/task/<task_id>", methods=["GET"])
+def task_status(task_id):
+    with tasks_lock:
+        task = tasks.get(task_id)
+
+    if task is None:
+        return render_template(
+            "task_status.html",
+            status="missing",
+            message="Task-ul nu a fost găsit sau a expirat. Te rog să reîncerci.",
+            task_id=task_id,
+            result=None,
+        )
+
+    status = task["status"]
+
+    if status == "pending":
+        return render_template(
+            "task_status.html",
+            status="pending",
+            message="Articolul se generează... Mai așteaptă câteva secunde și reîncarcă.",
+            task_id=task_id,
+            result=None,
+        )
+
+    if status == "error":
+        return render_template(
+            "task_status.html",
+            status="error",
+            message=f"A apărut o eroare la generare: {task.get('error')}",
+            task_id=task_id,
+            result=None,
+        )
+
+    result = task["result"]
+    return render_template(
+        "result.html",
+        title=result["title"],
+        article=result["article"],
+        images=result["images"],
+        probe_url=result["probe_url"],
     )
 
-    return jsonify({"task_id": task_id, "redirect": f"/task/{task_id}"})
 
+@app.route("/publish", methods=["POST"])
+def publish():
+    title = request.form.get("title", "").strip()
+    content = request.form.get("content", "").strip()
 
-def run_generation_task(task_id, probe_url, style, min_words, min_images, max_images, min_links, custom_keywords):
-    try:
-        TASKS[task_id]["status"] = "extracting"
-
-        extracted = extract_probe_data(probe_url)
-
-        TASKS[task_id]["status"] = "generating"
-
-        article = generate_article(
-            extracted,
-            style=style,
-            target_words=min_words,
-            min_images=min_images,
-            max_images=max_images,
-            min_links=min_links,
-            required_keywords=custom_keywords,
-        )
-
-        TASKS[task_id]["status"] = "done"
-        TASKS[task_id]["result"] = {
-            "article": article,
-            "probe_url": probe_url,
-            "title": extracted.get("probe_title", "Articol generat"),
-            "images": extracted.get("images", []),
-        }
-    except Exception as e:
-        TASKS[task_id]["status"] = "error"
-        TASKS[task_id]["result"] = str(e)
-
-
-@app.route("/task/<task_id>")
-def task_status(task_id):
-    task = TASKS.get(task_id)
-    if not task:
-        return f"Task invalid: {task_id}", 404
-
-    if task["status"] == "running" or task["status"] == "extracting" or task["status"] == "generating":
-        return render_template("task_wait.html", task_id=task_id, status=task["status"])
-
-    if task["status"] == "done":
+    if not title or not content:
         return render_template(
-            "result.html",
-            article=task["result"]["article"],
-            probe_url=task["result"]["probe_url"],
-            title=task["result"]["title"],
-            images=task["result"]["images"],
+            "publish_result.html",
+            success=False,
+            message="Titlul sau conținutul lipsesc. Te rog verifică.",
+            post_url=None,
         )
 
-    return f"Eroare la generare: {task['result']}", 500
+    try:
+        wp_post = publish_post(title=title, content=content)
+        post_url = wp_post.get("link")
+        return render_template(
+            "publish_result.html",
+            success=True,
+            message="Articolul a fost trimis cu succes către WordPress.",
+            post_url=post_url,
+        )
+
+    except WordPressError as we:
+        return render_template(
+            "publish_result.html",
+            success=False,
+            message=f"Eroare WordPress: {we}",
+            post_url=None,
+        )
+
+    except Exception as e:
+        return render_template(
+            "publish_result.html",
+            success=False,
+            message=f"Eroare neașteptată: {e}",
+            post_url=None,
+        )
 
 
 if __name__ == "__main__":
