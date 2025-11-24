@@ -2,75 +2,112 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>SuperBlog AI – Generator</title>
+    <title>SuperBlog AI Generator – Gold Edition</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Generator Articole SuperBlog</h1>
+<!-- ====================== HERO SECTION GOLD ====================== -->
 
-    <form method="POST" action="/" class="form-box">
+<header class="site-header">
+    <h1>SuperBlog AI Generator</h1>
+    <p>Din brieful probei → articol complet premium, gata de publicare.</p>
+</header>
 
-        <!-- LINK PROBĂ -->
-        <label for="url">Link către proba SuperBlog:</label>
-        <input type="url" id="url" name="url" required placeholder="https://blog.super-blog.eu/proba-XX..." />
+<div class="content">
 
-        <!-- STIL DE SCRIERE -->
-        <label for="style">Stil de scriere:</label>
-        <select id="style" name="style">
-            <option value="balanced">Balanced (echilibrat)</option>
-            <option value="story">Story (cinematic)</option>
-            <option value="marketing">Marketing soft</option>
-            <option value="journalistic">Jurnalistic</option>
-            <option value="playful">Playful (jucăuș)</option>
-            <option value="formal">Formal</option>
-        </select>
+    <!-- ====================== FORM CARD ====================== -->
 
-        <hr>
+    <div class="generator-form">
 
-        <!-- NUMĂR MINIM DE CUVINTE -->
-        <label for="target_words">Număr minim de cuvinte:</label>
-        <select id="target_words" name="target_words">
-            <option value="800">800</option>
-            <option value="900" selected>900</option>
-            <option value="1100">1100</option>
-            <option value="1300">1300</option>
-            <option value="1500">1500</option>
-        </select>
+        <h2 style="
+            margin-top:0;
+            background: linear-gradient(to right, #d4af37, #f3d98c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        ">
+            Generează un articol SuperBlog – Gold Edition
+        </h2>
 
-        <!-- IMAGINI MIN/MAX -->
-        <label for="min_images">Număr minim imagini integrate:</label>
-        <select id="min_images" name="min_images">
-            <option value="1">1</option>
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-        </select>
+        <form action="/" method="POST">
 
-        <label for="max_images">Număr maxim imagini integrate:</label>
-        <select id="max_images" name="max_images">
-            <option value="2">2</option>
-            <option value="3" selected>3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-        </select>
+            <!-- LINK PROBĂ -->
+            <label for="probe_url">Link către proba SuperBlog:</label>
+            <input type="url" id="probe_url" name="probe_url"
+                   placeholder="https://blog.super-blog.eu/proba-XX..."
+                   required>
 
-        <!-- LINKURI MINIME -->
-        <label for="min_links">Număr minim linkuri în articol:</label>
-        <select id="min_links" name="min_links">
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-        </select>
+            <!-- STIL SCRIERE -->
+            <label for="style">Stil de scriere:</label>
+            <select id="style" name="style">
+                <option value="balanced">Balanced (echilibrat)</option>
+                <option value="story">Story – poveste cinematică</option>
+                <option value="marketing">Marketing soft</option>
+                <option value="journalistic">Jurnalistic</option>
+                <option value="formal">Formal elegant</option>
+                <option value="playful">Playful / jucăuș</option>
+            </select>
 
-        <!-- CUVINTE-CHEIE PERSONALIZATE -->
-        <label for="keywords">Cuvinte-cheie personalizate (separate prin virgulă):</label>
-        <input type="text" id="keywords" name="keywords" placeholder="asistent virtual, translator vocal, traducere instantanee" />
+            <!-- ====================== ADVANCED OPTIONS ====================== -->
 
-        <button type="submit">Generează articol</button>
-    </form>
+            <div class="advanced-panel">
+                <div class="advanced-title">Opțiuni avansate</div>
+
+                <!-- CUVINTE -->
+                <div class="option-block">
+                    <h3>Număr minim de cuvinte</h3>
+                    <input type="number" name="min_words" value="900" min="300">
+                </div>
+
+                <!-- IMAGINI -->
+                <div class="option-block">
+                    <h3>Număr minim imagini integrate</h3>
+                    <input type="number" name="min_images" value="2" min="0">
+
+                    <h3 style="margin-top:0.8rem;">Număr maxim imagini integrate</h3>
+                    <input type="number" name="max_images" value="3" min="1">
+                </div>
+
+                <!-- LINKURI -->
+                <div class="option-block">
+                    <h3>Număr minim linkuri în articol</h3>
+                    <input type="number" name="min_links" value="2" min="0">
+                </div>
+
+                <!-- CUVINTE-CHEIE -->
+                <div class="option-block">
+                    <h3>Cuvinte-cheie personalizate</h3>
+                    <input type="text" name="custom_keywords"
+                           placeholder="ex: asistent virtual, translator vocal, comunicare globală">
+                    <div class="hint">Scrie cuvintele separate prin virgulă.</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary"
+                    style="margin-top:1rem;">Generează articolul</button>
+
+        </form>
+    </div>
+
+    <!-- ====================== TIPS SECTION ====================== -->
+
+    <div class="tips" style="margin-top:2rem;">
+        <h2>Sfaturi pentru un articol de nivel premiat</h2>
+        <ol>
+            <li>Include minimum 2-3 personaje sau situații narative.</li>
+            <li>Integrează tehnologia în poveste, nu ca reclamă.</li>
+            <li>Adaugă descrieri vizuale și emoționale.</li>
+            <li>Folosește 2+ imagini relevante din sursa probei.</li>
+            <li>Folosește linkuri și cuvinte-cheie natural.</li>
+        </ol>
+    </div>
+
 </div>
+
+<footer class="site-footer">
+    © 2025 SuperBlog AI Generator – Gold Edition
+</footer>
 
 </body>
 </html>
-
